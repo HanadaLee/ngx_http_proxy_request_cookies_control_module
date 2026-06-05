@@ -502,13 +502,13 @@ ngx_http_proxy_request_cookies_control_exec_rule(ngx_http_request_t *r,
     cookie = (*cookies)->elts;
 
     if (rule->opcode == NGX_HTTP_PROXY_REQUEST_COOKIES_CONTROL_CLEAR_ALL) {
-        *changed = 1;
 
         for (i = 0; i < (*cookies)->nelts; i++) {
             if (cookie[i].cleared) {
                 continue;
             }
             cookie[i].cleared = 1;
+            *changed = 1;
         }
 
         return NGX_OK;
