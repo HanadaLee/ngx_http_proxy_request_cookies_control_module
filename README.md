@@ -13,6 +13,7 @@ A NGINX module for fine-grained proxy request cookies control.
 - [Status](#status)
 - [Synopsis](#synopsis)
 - [Installation](#installation)
+- [Conditional syntax](#conditional-syntax)
 - [Directives](#directives)
   - [proxy\_request\_cookie\_control](#proxy_request_cookie_control)
 - [Author](#author)
@@ -57,8 +58,11 @@ http {
             # Pass a cookie through and disable later same-name rules.
             proxy_request_cookie_control pass token;
 
-            # Conditional filtering. Only effected if varialbe $http_a is not empty or '0'.
-            proxy_request_cookie_control set h 4 if=$http_a;
+            # With ngx_condition_module.
+            condition has_header_a is_not_empty $http_a;
+            when has_header_a {
+                proxy_request_cookie_control set h 4;
+            }
 
             # If has `-i` option, the cookie name will be case-insensitive.
             proxy_request_cookie_control set -i i 1;
@@ -84,15 +88,28 @@ To use theses modules, configure your nginx branch with:
     --add-module=/path/to/ngx_http_proxy_request_cookies_control_module
 ```
 
+To enable named conditions, add `--add-module=/path/to/ngx_condition_module` to the same static nginx build.
+
+# Conditional syntax
+
+Conditional syntax is selected at compile time:
+
+- With `ngx_condition_module`, use named `condition` expressions and place `proxy_request_cookie_control` inside an `http`, `server`, or `location` `when` block. `if=` and `if!=` parameters are rejected.
+- Without `ngx_condition_module`, `when` is unavailable and legacy `if=`/`if!=` parameters remain supported. `if=` matches a non-empty value other than `"0"`; `if!=` matches an empty value or `"0"`.
+
+If a condition does not match, the rule is skipped and does not stop later rules for the same cookie. The directive also remains valid in nginx's native `if` block inside a location; that context is separate from a condition-module `when` block.
+
 # Directives
 
 ## proxy_request_cookie_control
 
-**Syntax:** `proxy_request_cookie_control operator [-i] [-n] [-b] cookie_name [value] [if=condition|if!=condition];`
+**Syntax:** `proxy_request_cookie_control operator [-i] [-n] [-b] cookie_name [value ...];`
+
+**Legacy syntax (without ngx_condition_module):** `proxy_request_cookie_control operator [-i] [-n] [-b] cookie_name [value ...] [if=condition | if!=condition];`
 
 **Default:** —
 
-**Context:** http, server, location
+**Context:** http, server, location, location if; http when, server when, location when (with ngx_condition_module)
 
 Filters cookies in the upstream request headers. All filter rules are applied in the order they are defined. The result directly modifies the `Cookie` header sent to the upstream.
 
@@ -115,8 +132,8 @@ The following parameters are supported:
 | `-i` | Makes the cookie name case-insensitive. When an existing cookie is matched and needs to be set or rewritten, only its value is modified. The original name is preserved. |
 | `-n` | By default, once a cookie name is matched, subsequent rules for that name are skipped. This flag continues evaluating later rules for the same cookie name after this rule is applied. Wildcard `clear` and `keep` rules are not affected and always continue. |
 | `-b` | Stops evaluating subsequent cookie rules and outputs the final result after this rule applies. |
-| `if=condition`  | Evaluates the rule only if the condition value is not empty and not `0`. |
-| `if!=condition`  | Evaluates the rule only if the condition value is empty or `0`. |
+| `if=condition` | Legacy-only: evaluates the rule if the value is non-empty and not `0`. |
+| `if!=condition` | Legacy-only: evaluates the rule if the value is empty or `0`. |
 
 # Author
 
