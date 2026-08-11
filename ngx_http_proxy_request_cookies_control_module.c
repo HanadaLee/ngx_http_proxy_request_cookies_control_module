@@ -9,7 +9,7 @@
 #include <ngx_http.h>
 
 #if !defined(NGX_HTTP_PROXY_FILTER) || !(NGX_HTTP_PROXY_FILTER)
-#error "ngx_http_proxy_request_cookies_control_module requires NGX_HTTP_PROXY_FILTER"
+#error "NGX_HTTP_PROXY_FILTER is required"
 #endif
 
 #include <ngx_http_proxy_filter_module.h>
@@ -527,6 +527,7 @@ ngx_http_proxy_request_cookies_control_exec_rule(ngx_http_request_t *r,
             if (cookie[i].cleared) {
                 continue;
             }
+
             cookie[i].cleared = 1;
             *changed = 1;
         }
@@ -842,7 +843,7 @@ ngx_http_proxy_request_cookies_control_match_rule_name(ngx_str_t *name,
     }
 
     return ngx_http_proxy_request_cookies_control_match_name(name, &pattern,
-                                                            rule->ignore_case);
+                                                             rule->ignore_case);
 }
 
 
@@ -1213,8 +1214,8 @@ static char *
 ngx_http_proxy_request_cookies_control_merge_loc_conf(ngx_conf_t *cf,
     void *parent, void *child)
 {
-    ngx_http_proxy_request_cookies_control_loc_conf_t  *prev = parent;
-    ngx_http_proxy_request_cookies_control_loc_conf_t  *conf = child;
+    ngx_http_proxy_request_cookies_control_loc_conf_t *prev = parent;
+    ngx_http_proxy_request_cookies_control_loc_conf_t *conf = child;
     ngx_flag_t                                         conditional;
     ngx_uint_t                                         i, j;
     ngx_uint_t                                         orig_len, prev_len;
