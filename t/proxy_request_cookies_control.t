@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# Tests for proxy request cookie controls with ngx_condition_module.
+# Tests for proxy request cookie controls with ngx_expr_module.
 
 ###############################################################################
 
@@ -18,7 +18,7 @@ use Test::Nginx qw/ :DEFAULT http_content /;
 select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
-my $t = Test::Nginx->new()->has(qw/http proxy rewrite ngx_condition_module
+my $t = Test::Nginx->new()->has(qw/http proxy rewrite ngx_expr_module
 	ngx_http_proxy_filter_module
 	ngx_http_proxy_request_cookies_control_module/)->plan(38);
 
@@ -47,7 +47,7 @@ http {
         listen       127.0.0.1:8080;
         server_name  localhost;
 
-        condition special str_eq $arg_mode special;
+        expr special str_eq $arg_mode special;
 
         location = /ops {
             proxy_request_cookie_control set existing $arg_value;
@@ -136,7 +136,7 @@ http {
         listen       127.0.0.1:8082;
         server_name  inheritance;
 
-        condition child_selected str_eq $arg_mode special;
+        expr child_selected str_eq $arg_mode special;
 
         proxy_request_cookie_control set inherited parent;
         proxy_request_cookie_control set unrelated parent-only;

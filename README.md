@@ -58,8 +58,8 @@ http {
             # Pass a cookie through and disable later same-name rules.
             proxy_request_cookie_control pass token;
 
-            # With ngx_condition_module.
-            condition has_header_a is_not_empty $http_a;
+            # With ngx_expr_module.
+            expr has_header_a !is_empty $http_a;
             when has_header_a {
                 proxy_request_cookie_control set h 4;
             }
@@ -88,14 +88,14 @@ To use theses modules, configure your nginx branch with:
     --add-module=/path/to/ngx_http_proxy_request_cookies_control_module
 ```
 
-To enable named conditions, add `--add-module=/path/to/ngx_condition_module` to the same static nginx build.
+To enable named conditions, add `--add-module=/path/to/ngx_expr_module` to the same static nginx build.
 
 # Conditional syntax
 
 Conditional syntax is selected at compile time:
 
-- With `ngx_condition_module`, use named `condition` expressions and place `proxy_request_cookie_control` inside an `http`, `server`, or `location` `when` block. `if=` and `if!=` parameters are rejected.
-- Without `ngx_condition_module`, `when` is unavailable and legacy `if=`/`if!=` parameters remain supported. `if=` matches a non-empty value other than `"0"`; `if!=` matches an empty value or `"0"`.
+- With `ngx_expr_module`, use named `expr` expressions and place `proxy_request_cookie_control` inside an `http`, `server`, or `location` `when` block. `if=` and `if!=` parameters are rejected.
+- Without `ngx_expr_module`, `when` is unavailable and legacy `if=`/`if!=` parameters remain supported. `if=` matches a non-empty value other than `"0"`; `if!=` matches an empty value or `"0"`.
 
 If a condition does not match, the rule is skipped and does not stop later rules for the same cookie. The directive also remains valid in nginx's native `if` block inside a location; that context is separate from a condition-module `when` block.
 
@@ -105,11 +105,11 @@ If a condition does not match, the rule is skipped and does not stop later rules
 
 **Syntax:** `proxy_request_cookie_control operator [-i] [-n] [-b] cookie_name [value ...];`
 
-**Legacy syntax (without ngx_condition_module):** `proxy_request_cookie_control operator [-i] [-n] [-b] cookie_name [value ...] [if=condition | if!=condition];`
+**Legacy syntax (without ngx_expr_module):** `proxy_request_cookie_control operator [-i] [-n] [-b] cookie_name [value ...] [if=condition | if!=condition];`
 
 **Default:** —
 
-**Context:** http, server, location, location if; http when, server when, location when (with ngx_condition_module)
+**Context:** http, server, location, location if; http when, server when, location when (with ngx_expr_module)
 
 Filters cookies in the upstream request headers. All filter rules are applied in the order they are defined. The result directly modifies the `Cookie` header sent to the upstream.
 
