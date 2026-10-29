@@ -58,7 +58,7 @@ shopt -s nullglob
 tests=()
 for test_file in t/*.t; do
     if [[ "${TEST_EXPR:-enabled}" == disabled ]]; then
-        [[ "$test_file" == *_legacy.t ]] || continue
+        [[ "$test_file" == *_legacy.t || "$test_file" == *_nameless.t ]] || continue
     else
         [[ "$test_file" != *_legacy.t ]] || continue
     fi

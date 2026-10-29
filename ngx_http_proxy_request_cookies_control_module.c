@@ -60,6 +60,7 @@ typedef struct {
     ngx_str_t                                name;
     ngx_str_t                                value;
     ngx_uint_t                               cleared;
+    ngx_uint_t                               has_equals;
 } ngx_http_proxy_request_cookies_control_cookie_t;
 
 
@@ -220,10 +221,9 @@ static ngx_int_t
 ngx_http_proxy_request_cookies_control_parse_cookie_value(
     ngx_http_request_t *r, ngx_str_t *src, ngx_array_t *cookies)
 {
-    u_char                               *start, *end, *last;
-    ngx_str_t                             name, value;
-
-    ngx_http_proxy_request_cookies_control_cookie_t  *cookie;
+    u_char                                         *start, *end, *last, *p;
+    ngx_str_t                                       name, value;
+    ngx_http_proxy_request_cookies_control_cookie_t *cookie;
 
     if (src == NULL || src->len == 0) {
         return NGX_OK;
@@ -233,31 +233,42 @@ ngx_http_proxy_request_cookies_control_parse_cookie_value(
     end = src->data + src->len;
 
     while (start < end) {
-
-        while (start < end && (*start == ' ' || *start == ';')) {
-            start++;
-        }
-
-        if (start == end) {
-            break;
-        }
-
-        last = ngx_strlchr(start, end, '=');
-        if (last == NULL) {
-            break;
-        }
-
-        name.data = start;
-        name.len = last - start;
-
-        start = last + 1;
         last = ngx_strlchr(start, end, ';');
         if (last == NULL) {
             last = end;
         }
 
-        value.data = start;
-        value.len = last - start;
+        while (start < last && (*start == ' ' || *start == '\t')) {
+            start++;
+        }
+
+        if (start == last) {
+            start = last < end ? last + 1 : end;
+            continue;
+        }
+
+        p = ngx_strlchr(start, last, '=');
+        name.data = start;
+        name.len = p == NULL ? 0 : (size_t) (p - start);
+        value.data = p == NULL ? start : p + 1;
+        value.len = last - value.data;
+
+        while (name.len && (name.data[name.len - 1] == ' '
+                            || name.data[name.len - 1] == '\t'))
+        {
+            name.len--;
+        }
+
+        while (value.len && (*value.data == ' ' || *value.data == '\t')) {
+            value.data++;
+            value.len--;
+        }
+
+        while (value.len && (value.data[value.len - 1] == ' '
+                             || value.data[value.len - 1] == '\t'))
+        {
+            value.len--;
+        }
 
         cookie = ngx_array_push(cookies);
         if (cookie == NULL) {
@@ -267,8 +278,9 @@ ngx_http_proxy_request_cookies_control_parse_cookie_value(
         cookie->name = name;
         cookie->value = value;
         cookie->cleared = 0;
+        cookie->has_equals = p != NULL;
 
-        start = last;
+        start = last < end ? last + 1 : end;
     }
 
     return NGX_OK;
@@ -599,6 +611,7 @@ ngx_http_proxy_request_cookies_control_exec_rule(ngx_http_request_t *r,
         cookie->name = rule->name;
         cookie->value = value;
         cookie->cleared = 0;
+        cookie->has_equals = rule->name.len != 0;
         *changed = 1;
 
         return NGX_OK;
@@ -659,6 +672,7 @@ ngx_http_proxy_request_cookies_control_exec_rule(ngx_http_request_t *r,
     cookie->name = rule->name;
     cookie->value = value;
     cookie->cleared = 0;
+    cookie->has_equals = rule->name.len != 0;
     *changed = 1;
 
     return NGX_OK;
@@ -684,7 +698,8 @@ ngx_http_proxy_request_cookies_control_rebuild_header(ngx_http_request_t *r,
             continue;
         }
 
-        len += cookie[i].name.len + 1 + cookie[i].value.len + 2;
+        len += cookie[i].name.len + cookie[i].has_equals
+               + cookie[i].value.len + 2;
     }
 
     if (len == 0) {
@@ -735,7 +750,10 @@ ngx_http_proxy_request_cookies_control_rebuild_header(ngx_http_request_t *r,
         }
 
         p = ngx_copy(p, cookie[i].name.data, cookie[i].name.len);
-        *p++ = '=';
+        if (cookie[i].has_equals) {
+            *p++ = '=';
+        }
+
         p = ngx_copy(p, cookie[i].value.data, cookie[i].value.len);
 
         first = 0;
@@ -1028,12 +1046,6 @@ ngx_http_proxy_request_cookies_control_directive(ngx_conf_t *cf,
 
         for ( /* void */ ; cur < cf->args->nelts; cur++) {
 
-            if (arg[cur].len == 0) {
-                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                                   "cookie name is empty");
-                return NGX_CONF_ERROR;
-            }
-
             if (arg[cur].len > 3
                 && ngx_strncmp(arg[cur].data, "if=", 3) == 0)
             {
@@ -1084,13 +1096,8 @@ ngx_http_proxy_request_cookies_control_directive(ngx_conf_t *cf,
 
         rule->name = arg[cur];
 
-        if (rule->name.len == 0) {
-            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                               "cookie name is empty");
-            return NGX_CONF_ERROR;
-        }
-
-        rule->wildcard = (rule->name.data[rule->name.len - 1] == '*');
+        rule->wildcard = rule->name.len != 0
+                         && rule->name.data[rule->name.len - 1] == '*';
 
         if (rule->wildcard) {
             if (rule->opcode != NGX_HTTP_PROXY_REQUEST_COOKIES_CONTROL_CLEAR) {

@@ -113,6 +113,12 @@ If a condition does not match, the rule is skipped and does not stop later rules
 
 Filters cookies in the upstream request headers. All filter rules are applied in the order they are defined. The result directly modifies the `Cookie` header sent to the upstream.
 
+A bare value such as `token` is a cookie with an empty name and the value
+`token`; `token=` is a named cookie with an empty value. Use `""` as the rule
+name to match nameless cookies. Unchanged nameless cookies retain their bare
+or `=value` form when the header is rebuilt. New nameless cookies use the bare
+form. `clear *` removes both named and nameless cookies.
+
 The following operators are supported:
 
 | Operator  | Description                                                                                                           |
