@@ -78,7 +78,7 @@ http {
 
 # Installation
 
-This module requires [ngx_http_proxy_filter_module](https://github.com/your-repo/ngx_http_proxy_filter_module) to be compiled first.
+This module requires [ngx_http_proxy_filter_module](https://github.com/HanadaLee/ngx_http_proxy_filter_module) to be compiled first.
 
 To use theses modules, configure your nginx branch with:
 
